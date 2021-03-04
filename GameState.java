@@ -194,5 +194,19 @@ public class GameState {
         else
         	return 0;
     }
-
+	public int dumbScore(){
+		int[] score = new int[2];
+		
+    	for (int i = 0; i < this.size; i++){
+    		for (int j = 0; j < this.size; j++){
+    			if ( board[i][j] == 1 ){
+    				score[0] += 1;
+    			}
+    			if ( board[i][j] == 2 ){
+    				score[1] += 1;
+    			}
+    		}
+    	}
+    	return score[0]-score[1];
+    }
 }
