@@ -1,19 +1,10 @@
 import java.util.ArrayList;
 
 
-/**
- * A simple OthelloAI-implementation. The method to decide the next move just
- * returns the first legal move that it finds.
- * @author Mai Ajspur
- * @version 9.2.2018
- */
-
-
-
 public class OthelloAI100 implements IOthelloAI{
 
 
-  private int max_depth = 8;
+  private int max_depth = 7;
 
 
 	public Position decideMove(GameState s){
@@ -21,7 +12,9 @@ public class OthelloAI100 implements IOthelloAI{
     printBoard(s);
 
 		ArrayList<Position> moves = actions(s);
+    // System.out.println(moves.size());
 		if ( !moves.isEmpty() ){
+
 
 			int max_score = Integer.MIN_VALUE;
       Position best_position = new Position(-1,-1);
@@ -32,7 +25,7 @@ public class OthelloAI100 implements IOthelloAI{
           best_position = a;
         }
       }
-      System.out.printf("%d %d\n", best_position.col, best_position.row);
+      //System.out.printf("%d %d\n", best_position.col, best_position.row);
       System.out.println(max_score);
       return best_position;
     }
@@ -60,6 +53,7 @@ public class OthelloAI100 implements IOthelloAI{
 
   // Returns the MAX value of a move
   private int maxValue(GameState s, int alpha, int beta, int depth){
+    if (s.isFinished()) return evaluateEnd(s);
     if (cutoffTest(depth)) return evaluate(s);
     int v = Integer.MIN_VALUE;
     for (Position a : actions(s)){
@@ -72,6 +66,7 @@ public class OthelloAI100 implements IOthelloAI{
 
   //Returns the MIN value of a move
   private int minValue(GameState s, int alpha, int beta, int depth){
+    if (s.isFinished()) return evaluateEnd(s);
     if (cutoffTest(depth)) return evaluate(s);
     int v = Integer.MAX_VALUE;
     for (Position a : actions(s)){
@@ -83,13 +78,82 @@ public class OthelloAI100 implements IOthelloAI{
   }
 
   //Evaluates the minimax-value of game state
-  private int evaluate(GameState s){
+  //Evaluates simply by the number of stones belonging to the AI compared to the opponent
+  private int evaluateNaive(GameState s){
     // System.out.print(s.countTokens()[0]);
     // System.out.print(" ");
     // System.out.print(s.countTokens()[1]);
     // System.out.print(" ");
     // System.out.println(s.countTokens()[1] - s.countTokens()[0]);
     return s.countTokens()[1] - s.countTokens()[0];
+  }
+
+
+
+  //This function counts the number of corner squares per player
+  private int[] countCorners(GameState s){
+    int[] corners = {0,0};
+    int[][] board = s.getBoard();
+    if (board[0][0] != 0) corners[board[0][0] - 1] += 1;
+    if (board[0][7] != 0) corners[board[0][7] - 1] += 1;
+    if (board[7][0] != 0) corners[board[7][0] - 1] += 1;
+    if (board[7][7] != 0) corners[board[7][7] - 1] += 1;
+    return corners;
+  }
+
+
+  //This function counts the number of "X-squares" for each player, which are the
+  //4 squares diagonally next to the corner squares. You don't want to put a token here
+  private int[] countXSquares(GameState s){
+    int[] XSquares = {0,0};
+    int[][] board = s.getBoard();
+    if (board[1][1] != 0) XSquares[board[1][1] - 1] += 1;
+    if (board[1][6] != 0) XSquares[board[1][6] - 1] += 1;
+    if (board[6][1] != 0) XSquares[board[6][1] - 1] += 1;
+    if (board[6][6] != 0) XSquares[board[6][6] - 1] += 1;
+    return XSquares;
+  }
+
+
+
+  private int evaluate(GameState s){
+    int my_number_of_moves;
+    int opponent_number_of_moves;
+    int[] corners = countCorners(s);
+    int[] XSquares = countXSquares(s);
+    int totalScore = 0;
+    if (s.getPlayerInTurn() == 2){
+      my_number_of_moves = s.legalMoves().size();
+      s.changePlayer();
+      opponent_number_of_moves = s.legalMoves().size();
+      s.changePlayer();
+    }
+    else {
+      opponent_number_of_moves = s.legalMoves().size();
+      s.changePlayer();
+      my_number_of_moves = s.legalMoves().size();
+      s.changePlayer();
+    }
+    totalScore += (my_number_of_moves - opponent_number_of_moves);
+
+    //Corner squares are strategically very good squares, so they are rated 10
+    totalScore -= 10*corners[0];
+    totalScore += 10*corners[1];
+
+    //"X-squares" are strategically bad squares, so they are rated at 5
+    totalScore += 5*XSquares[0];
+    totalScore -= 5*XSquares[1];
+    return totalScore;
+  }
+
+
+  //If MiniMax gets all the way to the end state, we evaluate a win as infinity,
+  //and a loss as negative infinity.
+  //A draw is 0
+  private int evaluateEnd(GameState s){
+    if (s.countTokens()[1] > s.countTokens()[0]) return Integer.MAX_VALUE - 1;
+    if (s.countTokens()[1] < s.countTokens()[0]) return Integer.MIN_VALUE + 1;
+    else return 0;
   }
 
   private void printBoard(GameState s){
